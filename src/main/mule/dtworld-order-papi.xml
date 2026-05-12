@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	<flow name="dtworld-order-papi-main" doc:id="88aa5997-e9ca-41c8-80a9-812881f5883f" />
+	<flow name="process-orders-flow" doc:id="2d98ea7d-671b-41c1-8ded-6f2653b80f2a" />
+	<flow name="sync-salesforce-orders-flow" doc:id="69ec5f72-8e00-4b51-a365-8eab8b3ab9a5" />
+	<flow name="health-check-flow" doc:id="4717f5c8-38d6-4957-bc6f-c0786605bc4a" />
+</mule>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+    
+    http://www.mulesoft.org/schema/mule/core 
+    http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+    
+    http://www.mulesoft.org/schema/mule/http 
+    http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+    
+    http://www.mulesoft.org/schema/mule/ee/core 
+    http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+    
+    http://www.mulesoft.org/schema/mule/secure-properties 
+    http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
+
+	<global-property
+		name="mule.env"
+		value="local" />
+
+	<global-property
+		name="mule.key"
+		value="mule123" />
+
+	<configuration-properties
+		doc:name="common-configuration-properties"
+		file="properties/properties.common/common.yaml" />
+
+	<configuration-properties
+		doc:name="environment-specific-common-configuration"
+		file="properties/config-${mule.env}.yaml" />
+
+	<secure-properties:config
+		name="secure-properties-configuration"
+		doc:name="secure-properties-configuration"
+		file="properties/properties.secure/config-${mule.env}-secure.yaml"
+		key="${mule.key}" />
+
+	<http:listener-config
+		name="dtworld-order-papi-httpListenerConfig"
+		doc:name="dtworld-order-papi-httpListenerConfig">
+
+		<http:listener-connection
+			host="${http.listener.host}"
+			port="${http.listener.port}" />
+
+	</http:listener-config>
+
+	<http:request-config
+		name="db-sys-api-http-request-configuration"
+		doc:name="db-sys-api-http-request-configuration">
+
+		<http:request-connection
+			host="${db.sys.api.host}"
+			port="${db.sys.api.port}"
+			protocol="${db.sys.api.protocol}" />
+
+	</http:request-config>
+
+</mule>
