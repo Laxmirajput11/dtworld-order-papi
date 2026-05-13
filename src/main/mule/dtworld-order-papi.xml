@@ -23,7 +23,7 @@ http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sft
 			</scheduling-strategy>
 		</scheduler>
 		<logger level="INFO" doc:name="Start" doc:id="6d22d0c3-1765-4a5a-8915-e10ad95e0a78" message="Starting DTWORLD order ingestion process"/>
-		<sftp:list doc:name="Fetching Files From SFTP Server" doc:id="54a28bbf-8dd7-4385-be46-5397bcfbd15a" config-ref="sftp-configuration" directoryPath="/incoming-orders"/>
+		<sftp:list doc:name="Fetching Files From SFTP Server" doc:id="54a28bbf-8dd7-4385-be46-5397bcfbd15a" config-ref="sftp-configuration" directoryPath="${sftp.directory}"/>
 		<logger level="INFO" doc:name="End" doc:id="de255333-29fb-4f9a-b7d8-a049f012f68f" message="Successfully fetched files from SFTP server"/>
 	</flow>
 	<flow name="sync-salesforce-orders-flow" doc:id="69ec5f72-8e00-4b51-a365-8eab8b3ab9a5" >

@@ -1,0 +1,13 @@
+http:
+  listener:
+    host: "0.0.0.0"
+    port: "8081"
+
+scheduler:
+  order:
+    frequency: "1"
+    timeUnit: "HOURS"
+
+  salesforce:
+    frequency: "6"
+    timeUnit: "HOURS"

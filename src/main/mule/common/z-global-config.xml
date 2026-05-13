@@ -32,7 +32,7 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 
 	<configuration-properties
     	doc:name="common-configuration-properties"
-    	file="properties.common/common.yaml" />
+    	file="properties/common/common.yaml" />
 
 	<configuration-properties
     	doc:name="environment-specific-common-configuration"
