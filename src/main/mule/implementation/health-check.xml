@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd"></mule>
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<flow name="health-check-flow" doc:id="839173df-14e2-4480-b8ff-a766f0d5112a" >
+		<http:listener doc:name="Listener" doc:id="42cce529-709b-4288-baab-dbb05ef39e5c" config-ref="dtworld-order-papi-http-listener-configuration" path="/health-check" />
+		<set-payload value='#[{&#10;  "success": true,&#10;  "message": "DTWORLD Order PAPI is running successfully"&#10;}]' doc:name="Health Check" doc:id="54803c15-0804-4258-9bd7-f018051a320c" />
+		<logger level="INFO" doc:name="End" doc:id="2943fb59-3324-4418-8bf5-dd27f4eae221" message="Health check flow executed successfully" />
+	</flow>
+</mule>

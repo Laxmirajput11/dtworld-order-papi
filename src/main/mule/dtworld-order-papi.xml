@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns:http="http://www.mulesoft.org/schema/mule/http"
-	xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
-http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd">
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
 	
 	
 	<flow name="dtworld-order-papi-main" doc:id="e9e33c61-10dc-49cc-a2c3-20480361c9c9">
@@ -15,35 +16,5 @@ http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sft
 		doc:id="ef10c007-36c6-4ed9-aea1-59ac27bd5b6a"
 		message="Starting DTWORLD Order PAPI application"/>
 
-	</flow>
-	<flow name="process-orders-flow" doc:id="2d98ea7d-671b-41c1-8ded-6f2653b80f2a" >
-		<scheduler doc:name="Triggering Order Ingestion Process" doc:id="4ef54d12-e880-4f28-8366-4ae49aed05df" >
-			<scheduling-strategy >
-				<fixed-frequency frequency="1" timeUnit="HOURS"/>
-			</scheduling-strategy>
-		</scheduler>
-		<logger level="INFO" doc:name="Start" doc:id="6d22d0c3-1765-4a5a-8915-e10ad95e0a78" message="Starting DTWORLD order ingestion process"/>
-		<sftp:list doc:name="Fetching Files From SFTP Server" doc:id="54a28bbf-8dd7-4385-be46-5397bcfbd15a" config-ref="sftp-configuration" directoryPath="${sftp.directory}"/>
-		<logger level="INFO" doc:name="End" doc:id="de255333-29fb-4f9a-b7d8-a049f012f68f" message="Successfully fetched files from SFTP server"/>
-	</flow>
-	<flow name="sync-salesforce-orders-flow" doc:id="69ec5f72-8e00-4b51-a365-8eab8b3ab9a5" >
-		<scheduler doc:name="Triggering Salesforce Synchronization Process" doc:id="b8216a37-ffae-4c9f-9171-86872b0fd31c" >
-			<scheduling-strategy >
-				<fixed-frequency frequency="6" timeUnit="HOURS" />
-			</scheduling-strategy>
-		</scheduler>
-		<logger level="INFO" doc:name="Start" doc:id="4e838ad4-a5d4-466f-bb8d-3df4c6c057b7" message="Starting Salesforce order synchronization process"/>
-		<http:request
-			doc:name="Fetching Pending Orders From DB SYS API"
-			doc:id="ed37c644-6988-4155-8aa7-a1b997b3c04c"
-			config-ref="db-sys-api-http-request-configuration"
-			method="GET"
-			path="/api/v1/orders"/>
-		<logger level="INFO" doc:name="End" doc:id="91ea7c3e-5572-4c64-8aa0-2b20a54a7dd4" message="Successfully fetched pending orders from DB SYS API"/>
-	</flow>
-	<flow name="health-check-flow" doc:id="4717f5c8-38d6-4957-bc6f-c0786605bc4a" >
-		<http:listener doc:name="Listener" doc:id="8c46e806-3bde-4714-8241-dc0e3fd787c1" config-ref="dtworld-order-papi-http-listener-configuration" path="/health-check"/>
-		<set-payload value='#[{&#10;  "success": true,&#10;  "message": "DTWORLD Order PAPI is running successfully"&#10;}]' doc:name="Health Check" doc:id="a382daf8-ae07-45fe-b24d-a81b3a9e4ab7" />
-		<logger level="INFO" doc:name="End" doc:id="71e31520-7249-4b9b-8f3b-b6307aca1164" message="Health check flow executed successfully" />
 	</flow>
 </mule>

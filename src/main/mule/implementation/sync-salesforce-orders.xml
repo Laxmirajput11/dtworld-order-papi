@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd"></mule>
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<flow name="sync-salesforce-orders-flow" doc:id="1e9cadfb-4e7d-4962-810f-76c60823de84" >
+		<scheduler doc:name="Triggering Salesforce Synchronization Process" doc:id="3016799d-cdbf-4b62-86c5-44aae781b5de" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="6" timeUnit="HOURS" />
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="Start" doc:id="0bb71652-88e4-4991-bb44-293a28c35a3e" message="Starting Salesforce order synchronization process" />
+		<http:request doc:name="Fetching Pending Orders From DB SYS API" doc:id="bdc2e8b9-2992-4603-805c-bdff510386d7" config-ref="db-sys-api-http-request-configuration" path="/api/v1/orders" />
+		<logger level="INFO" doc:name="End" doc:id="111872a2-6bbd-4ef5-a704-54c0d2071e00" message="Successfully fetched pending orders from DB SYS API" />
+	</flow>
+</mule>

@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd"></mule>
+<mule xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd">
+	<flow name="process-orders-flow" doc:id="6eb9eb72-8da9-4e47-9c09-5dd4099bf065" >
+		<scheduler doc:name="Triggering Order Ingestion Process" doc:id="75adcfce-53fe-441d-a246-1031b74e81dc" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="1" timeUnit="HOURS" />
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="Start" doc:id="0102bc77-6228-44ca-ae23-e99f46e42ede" message="Starting DTWORLD order ingestion process" />
+		<sftp:list doc:name="Fetching Files From SFTP Server" doc:id="6b216e39-70f6-43e9-92cf-cdcadd0f5221" config-ref="sftp-configuration" directoryPath="${sftp.directory}" />
+		<logger level="INFO" doc:name="End" doc:id="1a9d9b50-944a-47f5-ac8f-291520ab42c9" message="Successfully fetched files from SFTP server" />
+	</flow>
+</mule>
