@@ -1,17 +1,79 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd">
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
 	<flow name="process-orders-flow" doc:id="6eb9eb72-8da9-4e47-9c09-5dd4099bf065" >
 		<scheduler doc:name="Triggering Order Ingestion Process" doc:id="75adcfce-53fe-441d-a246-1031b74e81dc" >
 			<scheduling-strategy >
-				<fixed-frequency frequency="1" timeUnit="HOURS" />
+				<fixed-frequency frequency="1" timeUnit="MINUTES" />
 			</scheduling-strategy>
 		</scheduler>
 		<logger level="INFO" doc:name="Start" doc:id="0102bc77-6228-44ca-ae23-e99f46e42ede" message="Starting DTWORLD order ingestion process" />
-		<sftp:list doc:name="Fetching Files From SFTP Server" doc:id="6b216e39-70f6-43e9-92cf-cdcadd0f5221" config-ref="sftp-configuration" directoryPath="${sftp.directory}" />
+		<!-- [STUDIO:"Fetch Incoming Order Files"]<sftp:list doc:name="Fetch Incoming Order Files" doc:id="6b216e39-70f6-43e9-92cf-cdcadd0f5221" config-ref="sftp-configuration" directoryPath="." recursive="true">
+			<sftp:matcher pathPattern="*.csv" maxSize="100" />
+		</sftp:list> [STUDIO] -->
+		<logger level="INFO" doc:name="Logger" doc:id="9a1e5a79-b842-4da3-9e02-a8d032862052" message='#[payload]'/>
+		<sftp:read doc:name="Read Order File Content1" doc:id="91b8a16d-1a9b-4c0e-8f97-bf1b831ce1cb" config-ref="sftp-configuration" path="incoming-orders/orders_2026.csv" />
+		<ee:transform doc:name="Transforming Order CSV To DB Payload" doc:id="dbb53e78-d099-4d4c-b51a-d2488699be17" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+[
+  {
+    "orderId": "ORD-1001",
+    "customerName": "Rahul Sharma",
+    "customerEmail": "rahul@gmail.com",
+    "productName": "Laptop",
+    "quantity": 1,
+    "amount": 75000,
+    "orderDate": "2026-05-13",
+    "status": "NEW"
+  }
+]]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+		<http:request doc:name="Insertt Orders Into Staging Database" doc:id="b064216c-33d1-4f62-b67f-18edcba9a27d" config-ref="db-sys-api-http-request-configuration" method="POST" path="/api/orders"/>
+		<sftp:move doc:name="Move Processed Order File" doc:id="03338538-f304-4eb0-8f4d-c72a2a75989c" config-ref="sftp-configuration" sourcePath="#[payload]" targetPath='#["/processed-orders/" ++ (payload splitBy "/")[-1]]'/>
+					
+		<!-- [STUDIO:"filesAvailability?"]<choice doc:name="filesAvailability?" doc:id="5eaf7937-f4b6-4422-b205-d3aa38b3ba82" >
+			<when expression="sizeOf(payload) &gt; 0">
+				<foreach doc:name="For Each: Iterate Incoming Order Files" doc:id="c4eccad2-321f-4bc3-bdb8-2770da50db5b" >
+					<logger level="INFO" doc:name="Logger" doc:id="32b782c8-115d-45c2-a417-737b17268286" message="#[payload&#93;"/>
+					<sftp:read doc:name="Read Order File Content" doc:id="3ccf3f1e-0eee-4134-b676-1fb4acadf1c0" config-ref="sftp-configuration" path="#[payload&#93;"/>
+					<logger level="INFO" doc:name="Logger" doc:id="130d50b7-9675-4d33-9598-8ee1aa5d11c5" message="#[payload&#93;"/>
+					<ee:transform doc:name="Transforming Order CSV To DB Payload" doc:id="2dbed95d-9c07-4631-8f9c-c2c76a54a0a5" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+&#45;&#45;-
+[
+  {
+    "orderId": "ORD-1001",
+    "customerName": "Rahul Sharma",
+    "customerEmail": "rahul@gmail.com",
+    "productName": "Laptop",
+    "quantity": 1,
+    "amount": 75000,
+    "orderDate": "2026-05-13",
+    "status": "NEW"
+  }
+&#93;&#93;&#93;></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<http:request doc:name="Insertt Orders Into Staging Database" doc:id="1cf4f615-b22d-4b25-a9e9-1251b800d0a9" config-ref="db-sys-api-http-request-configuration" method="POST" path="/api/orders"/>
+					<sftp:move doc:name="Move Processed Order File" doc:id="4bdb1dfc-c1e7-476d-a51c-949865d132f9" config-ref="sftp-configuration" sourcePath="#[payload&#93;" targetPath='#["/processed-orders/" ++ (payload splitBy "/")[-1&#93;&#93;'/>
+					
+				</foreach>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Log No Files Available" doc:id="c3ddc564-527a-4811-b1d9-2c15a28b1f9c" message='#["No incoming order files available on SFTP server"&#93;'/>
+			</otherwise>
+		</choice> [STUDIO] -->
 		<logger level="INFO" doc:name="End" doc:id="1a9d9b50-944a-47f5-ac8f-291520ab42c9" message="Successfully fetched files from SFTP server" />
 	</flow>
 </mule>

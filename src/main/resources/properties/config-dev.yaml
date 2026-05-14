@@ -1,0 +1,11 @@
+db:
+  sys:
+    api:
+      host: "localhost"
+      port: "8082"
+
+sftp:
+  host: "us-east-1.sftpcloud.io"
+  port: "22"
+  username: "30c972f1f534459ab173991401abf842"
+  password: "5K1i56stPAjNlGcLMCvNrnESa45zwvFj"
