@@ -1,8 +1,7 @@
 db:
-  sys:
-    api:
-      host: "localhost"
-      port: "8082"
+  host: "dtworld-order-db-sapi-birthh.rajrd4-2.usa-e1.cloudhub.io"
+  port: "443"
+  protocol: "HTTPS"
 
 sftp:
   host: "us-east-1.sftpcloud.io"

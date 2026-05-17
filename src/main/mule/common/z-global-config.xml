@@ -24,7 +24,7 @@
 
 	<global-property
 		name="mule.env"
-		value="local" />
+		value="dev" />
 
 	<global-property
 		name="mule.key"
@@ -42,9 +42,9 @@
 		name="db-sys-api-http-request-configuration"
 		doc:name="db-sys-api-http-request-configuration">
 		<http:request-connection
-			protocol="HTTP"
-			host="${db.sys.api.host}"
-			port="${db.sys.api.port}" />
+			host="${db.host}"
+			port="${db.port}"
+			protocol="${db.protocol}" />
 	</http:request-config>
 
 	<sftp:config

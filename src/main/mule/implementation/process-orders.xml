@@ -21,22 +21,39 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 		<ee:transform doc:name="Transforming Order CSV To DB Payload" doc:id="dbb53e78-d099-4d4c-b51a-d2488699be17" >
 						<ee:message >
 							<ee:set-payload ><![CDATA[%dw 2.0
-output application/json
+output application/java
 ---
-[
-  {
-    "orderId": "ORD-1001",
-    "customerName": "Rahul Sharma",
-    "customerEmail": "rahul@gmail.com",
-    "productName": "Laptop",
-    "quantity": 1,
-    "amount": 75000,
-    "orderDate": "2026-05-13",
-    "status": "NEW"
-  }
-]]]></ee:set-payload>
+payload map (item) -> {
+	orderId: item.orderId,
+	customerName: item.customerName,
+	customerEmail: item.customerEmail,
+	productName: item.productName,
+
+	quantity: 
+		if(item.quantity != null and item.quantity != "")
+			item.quantity as Number
+		else
+			0,
+
+	orderAmount:
+		if(item.orderAmount != null and item.orderAmount != "")
+			item.orderAmount as Number
+		else
+			0,
+
+	currency: item.currency,
+
+	orderStatus: "CREATED",
+
+	sourceSystem: item.sourceSystem,
+	orderCreatedAt: item.orderCreatedAt,
+	ingestionStatus: "INGESTED",
+	syncStatus: "PENDING",
+	fileName: item.fileName
+}]]></ee:set-payload>
 						</ee:message>
 					</ee:transform>
+		<logger level="INFO" doc:name="Payload after mapping" doc:id="08c7d714-c339-4ea7-b1ef-3abb3a7e008b" message="#[payload]"/>
 		<http:request doc:name="Insertt Orders Into Staging Database" doc:id="b064216c-33d1-4f62-b67f-18edcba9a27d" config-ref="db-sys-api-http-request-configuration" method="POST" path="/api/orders"/>
 		<sftp:move doc:name="Move Processed Order File" doc:id="03338538-f304-4eb0-8f4d-c72a2a75989c" config-ref="sftp-configuration" sourcePath="#[payload]" targetPath='#["/processed-orders/" ++ (payload splitBy "/")[-1]]'/>
 					
