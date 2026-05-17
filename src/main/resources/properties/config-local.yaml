@@ -2,8 +2,7 @@ db:
   sys:
     api:
       host: "localhost"
-      port: "8082"
-
+      port: "8081"
 sftp:
   host: "us-east-1.sftpcloud.io"
   port: "22"

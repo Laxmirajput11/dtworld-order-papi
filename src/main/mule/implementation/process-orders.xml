@@ -9,7 +9,7 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 	<flow name="process-orders-flow" doc:id="6eb9eb72-8da9-4e47-9c09-5dd4099bf065" >
 		<scheduler doc:name="Triggering Order Ingestion Process" doc:id="75adcfce-53fe-441d-a246-1031b74e81dc" >
 			<scheduling-strategy >
-				<fixed-frequency frequency="1" timeUnit="MINUTES" />
+				<fixed-frequency frequency="1" timeUnit="HOURS" />
 			</scheduling-strategy>
 		</scheduler>
 		<logger level="INFO" doc:name="Start" doc:id="0102bc77-6228-44ca-ae23-e99f46e42ede" message="Starting DTWORLD order ingestion process" />
@@ -17,44 +17,38 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 			<sftp:matcher pathPattern="*.csv" maxSize="100" />
 		</sftp:list> [STUDIO] -->
 		<logger level="INFO" doc:name="Logger" doc:id="9a1e5a79-b842-4da3-9e02-a8d032862052" message='#[payload]'/>
-		<sftp:read doc:name="Read Order File Content1" doc:id="91b8a16d-1a9b-4c0e-8f97-bf1b831ce1cb" config-ref="sftp-configuration" path="incoming-orders/orders_2026.csv" />
+		<sftp:read doc:name="Read Order File Content1" doc:id="91b8a16d-1a9b-4c0e-8f97-bf1b831ce1cb" config-ref="sftp-configuration" path="incoming-orders/orders_2026.csv" outputMimeType='application/csv; separator=","; header=true'/>
+		<logger level="INFO" doc:name="Output after Read" doc:id="f851e528-3426-41ed-8f87-9297972f5e8f" message="#[payload]"/>
 		<ee:transform doc:name="Transforming Order CSV To DB Payload" doc:id="dbb53e78-d099-4d4c-b51a-d2488699be17" >
 						<ee:message >
 							<ee:set-payload ><![CDATA[%dw 2.0
-output application/java
+output application/json
 ---
 payload map (item) -> {
-	orderId: item.orderId,
-	customerName: item.customerName,
-	customerEmail: item.customerEmail,
-	productName: item.productName,
-
-	quantity: 
-		if(item.quantity != null and item.quantity != "")
-			item.quantity as Number
-		else
-			0,
-
-	orderAmount:
-		if(item.orderAmount != null and item.orderAmount != "")
-			item.orderAmount as Number
-		else
-			0,
-
-	currency: item.currency,
-
-	orderStatus: "CREATED",
-
-	sourceSystem: item.sourceSystem,
-	orderCreatedAt: item.orderCreatedAt,
-	ingestionStatus: "INGESTED",
-	syncStatus: "PENDING",
-	fileName: item.fileName
+    orderId: item.orderId,
+    customerName: item.customerName,
+    customerEmail: item.customerEmail,
+    productName: item.productName,
+    quantity: item.quantity as Number,
+    orderAmount: item.amount as Number,
+    currency: "INR",
+    orderStatus: "CREATED",
+    sourceSystem: "DTWORLD",
+    orderCreatedAt: now() as String {format: "yyyy-MM-dd HH:mm:ss"},
+    ingestionStatus: "INGESTED",
+    syncStatus: "PENDING",
+    fileName: "orders_2026.csv"
 }]]></ee:set-payload>
 						</ee:message>
 					</ee:transform>
 		<logger level="INFO" doc:name="Payload after mapping" doc:id="08c7d714-c339-4ea7-b1ef-3abb3a7e008b" message="#[payload]"/>
-		<http:request doc:name="Insertt Orders Into Staging Database" doc:id="b064216c-33d1-4f62-b67f-18edcba9a27d" config-ref="db-sys-api-http-request-configuration" method="POST" path="/api/orders"/>
+		<http:request doc:name="Insertt Orders Into Staging Database" doc:id="b064216c-33d1-4f62-b67f-18edcba9a27d" config-ref="db-sys-api-http-request-configuration" method="POST" path="/api/orders">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"Content-Type" : "application/json"
+}]]]></http:headers>
+		</http:request>
 		<sftp:move doc:name="Move Processed Order File" doc:id="03338538-f304-4eb0-8f4d-c72a2a75989c" config-ref="sftp-configuration" sourcePath="#[payload]" targetPath='#["/processed-orders/" ++ (payload splitBy "/")[-1]]'/>
 					
 		<!-- [STUDIO:"filesAvailability?"]<choice doc:name="filesAvailability?" doc:id="5eaf7937-f4b6-4422-b205-d3aa38b3ba82" >
