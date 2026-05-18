@@ -24,19 +24,23 @@
 
 	<global-property
 		name="mule.env"
-		value="dev" />
+		value="local"
+		doc:description="TO BE REMOVED" />
 
 	<global-property
 		name="mule.key"
-		value="mule123" />
+		value="mule123" 
+		doc:description="TO BE REMOVED"/>
 
 	<configuration-properties
     	doc:name="common-configuration-properties"
-    	file="properties/common/common.yaml" />
+    	file="properties/common/common.yaml" 
+    	doc:description="Environment Specific Property File"/>
 
 	<configuration-properties
     	doc:name="environment-specific-common-configuration"
-    	file="properties/config-${mule.env}.yaml" />
+    	file="properties/config-${mule.env}.yaml" 
+    	doc:description="Environment Specific Property File"/>
 	
 	<http:request-config
 		name="db-sys-api-http-request-configuration"
@@ -58,5 +62,14 @@
 			password="${sftp.password}"
 			workingDir="/" />
 	</sftp:config>
+	
+	<http:request-config
+    	name="salesforce-auth-http-request-configuration"
+    	doc:name="salesforce-auth-http-request-configuration">
+    	<http:request-connection
+       		protocol="HTTPS"
+        	host="${salesforce.auth.host}"
+        	port="443"/>
+	</http:request-config>
 
 </mule>

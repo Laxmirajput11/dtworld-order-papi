@@ -7,11 +7,11 @@ http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sft
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
 	<flow name="process-orders-flow" doc:id="6eb9eb72-8da9-4e47-9c09-5dd4099bf065" >
-		<scheduler doc:name="Triggering Order Ingestion Process" doc:id="75adcfce-53fe-441d-a246-1031b74e81dc" >
+		<!-- [STUDIO:"Triggering Order Ingestion Process"]<scheduler doc:name="Triggering Order Ingestion Process" doc:id="75adcfce-53fe-441d-a246-1031b74e81dc" >
 			<scheduling-strategy >
 				<fixed-frequency frequency="1" timeUnit="HOURS" />
 			</scheduling-strategy>
-		</scheduler>
+		</scheduler> [STUDIO] -->
 		<logger level="INFO" doc:name="Start" doc:id="0102bc77-6228-44ca-ae23-e99f46e42ede" message="Starting DTWORLD order ingestion process" />
 		<!-- [STUDIO:"Fetch Incoming Order Files"]<sftp:list doc:name="Fetch Incoming Order Files" doc:id="6b216e39-70f6-43e9-92cf-cdcadd0f5221" config-ref="sftp-configuration" directoryPath="." recursive="true">
 			<sftp:matcher pathPattern="*.csv" maxSize="100" />

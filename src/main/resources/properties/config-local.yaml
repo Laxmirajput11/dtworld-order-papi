@@ -1,10 +1,19 @@
 db:
-  sys:
-    api:
       host: "localhost"
       port: "8081"
+      protocol: "HTTP"
+      
 sftp:
   host: "us-east-1.sftpcloud.io"
   port: "22"
   username: "30c972f1f534459ab173991401abf842"
   password: "5K1i56stPAjNlGcLMCvNrnESa45zwvFj"
+  
+salesforce:
+  auth:
+    host: "login.salesforce.com"
+    tokenPath: "/services/oauth2/token"
+    clientId: "3MVG97L7PWbPq6UwpCtTo2lTZ1a2whH00wxlVGdsa4_Em6X0tHkLXWI4P9yAY10yxh.R28npC_IYoWXpsIkGM"
+    clientSecret: "3E57FE419C2B44C298189B225265078A508F241CDB9CC659CBC1616509C18B7A"
+    username: "laxmi.rajput.526b4c653e6d@agentforce.com"
+    password: "#Laxmi12345678904UOd2Gu8t7yfpoHX0PyAKl9r"

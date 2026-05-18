@@ -1,17 +1,269 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
 	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
-	<flow name="sync-salesforce-orders-flow" doc:id="1e9cadfb-4e7d-4962-810f-76c60823de84" >
-		<!-- [STUDIO:"Triggering Salesforce Synchronization Process"]<scheduler doc:name="Triggering Salesforce Synchronization Process" doc:id="3016799d-cdbf-4b62-86c5-44aae781b5de" >
-			<scheduling-strategy >
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+	<flow name="sync-salesforce-orders-flow"
+		doc:id="88f1982f-380c-407d-8733-7255613eac02">
+
+		<scheduler
+			doc:name="Triggering Salesforce Synchronization Process"
+			doc:id="24a225f2-51a7-4fd7-a986-7d1a1da4964a">
+
+			<scheduling-strategy>
 				<fixed-frequency frequency="6" timeUnit="HOURS" />
 			</scheduling-strategy>
-		</scheduler> [STUDIO] -->
-		<logger level="INFO" doc:name="Start" doc:id="0bb71652-88e4-4991-bb44-293a28c35a3e" message="Starting Salesforce order synchronization process" />
-		<http:request doc:name="Fetching Pending Orders From DB SYS API" doc:id="bdc2e8b9-2992-4603-805c-bdff510386d7" config-ref="db-sys-api-http-request-configuration" path="/api/v1/orders" />
-		<logger level="INFO" doc:name="End" doc:id="111872a2-6bbd-4ef5-a704-54c0d2071e00" message="Successfully fetched pending orders from DB SYS API" />
+
+		</scheduler>
+
+		<set-variable
+			value="#[uuid()]"
+			doc:name="var: correlationId"
+			doc:id="4321e39f-c549-4da4-8ee9-8d5755130404"
+			variableName="correlationId" />
+
+		<logger
+			level="INFO"
+			doc:name="Start"
+			doc:id="718523b9-f645-4215-9135-9990fb77835f"
+			message='#[%dw 2.0
+output application/json
+---
+{
+    appName: app.name,
+    flowName: flow.name,
+    position: "Flow Start",
+    correlationId: vars.correlationId,
+    timestamp: now()
+}]' />
+
+		<http:request
+			doc:name="Fetching Pending Orders From DB SYS API"
+			doc:id="7d8b998a-899f-4d08-be38-5d93ff26ff28"
+			config-ref="db-sys-api-http-request-configuration"
+			path="/api/orders" />
+
+		<logger
+			level="INFO"
+			doc:name="Pending Orders Retrieved"
+			doc:id="6e67e188-8900-4d23-98ef-37ff874c3062"
+			message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;    appName: app.name,&#10;    flowName: flow.name,&#10;    pendingOrdersCount: sizeOf(payload.data default []),&#10;    correlationId: vars.correlationId,&#10;    timestamp: now()&#10;}]' />
+
+		<choice
+			doc:name="Pending Orders Available?"
+			doc:id="6d06cec3-87ad-43a0-96fb-be1c13a97806">
+
+			<when expression="#[payload.data != null and sizeOf(payload.data) &gt; 0]">
+
+			<ee:transform
+    doc:name="Segregating Orders For Synchronization"
+    doc:id="1d233a65-bd7e-4753-8975-03a53a8121e2">
+
+    <ee:message>
+        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+
+var orders = payload.data default []
+
+---
+{
+    skippedOrders:
+        orders filter (
+            $.status == "CANCELLED"
+            and $.createdAt != null
+            and $.cancelledAt != null
+            and (
+                (
+                    ($.cancelledAt as DateTime)
+                    -
+                    ($.createdAt as DateTime)
+                ).hours
+            ) < 6
+        ),
+
+    eligibleOrders:
+        orders filter (
+            !(
+                $.status == "CANCELLED"
+                and $.createdAt != null
+                and $.cancelledAt != null
+                and (
+                    (
+                        ($.cancelledAt as DateTime)
+                        -
+                        ($.createdAt as DateTime)
+                    ).hours
+                ) < 6
+            )
+        )
+}]]></ee:set-payload>
+    </ee:message>
+
+</ee:transform>
+
+<logger
+    level="INFO"
+    doc:name="Orders Segregated Successfully"
+    doc:id="b8aa4772-76ac-49b5-851a-1afebf36f91a"
+    message='#[%dw 2.0
+output application/json
+---
+{
+    appName: app.name,
+    flowName: flow.name,
+    skippedOrdersCount: sizeOf(payload.skippedOrders default []),
+    eligibleOrdersCount: sizeOf(payload.eligibleOrders default []),
+    correlationId: vars.correlationId,
+    timestamp: now()
+}]' />
+
+<choice
+    doc:name="Skipped Orders Available?"
+    doc:id="7215e1d3-0b5e-43fe-96c8-45dc3b232a07">
+
+    <when expression="#[sizeOf(payload.skippedOrders default []) > 0]">
+
+        <foreach
+            doc:name="Iterating Over Skipped Orders"
+            doc:id="4318e8ae-f0b2-4a13-862d-21ea33e73013"
+            collection="#[payload.skippedOrders]">
+
+            <logger
+                level="INFO"
+                doc:name="Skipping Salesforce Synchronization"
+                doc:id="b6a6937e-c6d6-46f5-b82f-86188eea2a7f"
+                message='#[%dw 2.0
+output application/json
+---
+{
+    appName: app.name,
+    flowName: flow.name,
+    orderId: payload.orderId,
+    message: "Order skipped because it was cancelled within 6 hours",
+    correlationId: vars.correlationId,
+    timestamp: now()
+}]' />
+
+            <set-variable
+                value="#[payload.orderId]"
+                doc:name="var: currentOrderId"
+                doc:id="e91ecb52-084a-4902-b780-f356cf5e2944"
+                variableName="currentOrderId" />
+
+            <ee:transform
+                doc:name="Preparing Skipped Order Update Payload"
+                doc:id="d273f7c0-130a-4124-8297-aef27ff0bbeb">
+
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    orderId: payload.orderId,
+    syncStatus: "SKIPPED",
+    syncMessage: "Order cancelled within 6 hours"
+}]]></ee:set-payload>
+                </ee:message>
+
+            </ee:transform>
+
+            <http:request
+                doc:name="Updating Order As Skipped"
+                doc:id="29ced87f-d0c7-42bb-88e4-39b4e12d4bb9"
+                config-ref="db-sys-api-http-request-configuration"
+                method="PATCH"
+                path="/api/orders" />
+
+            <logger
+                level="INFO"
+                doc:name="Skipped Order Updated Successfully"
+                doc:id="eb470d9b-6ee5-4402-948c-e81f20298926"
+                message='#[%dw 2.0
+output application/json
+---
+{
+    appName: app.name,
+    flowName: flow.name,
+    orderId: vars.currentOrderId,
+    message: "Skipped order status updated successfully",
+    correlationId: vars.correlationId,
+    timestamp: now()
+}]' />
+
+        </foreach>
+
+    </when>
+					<otherwise >
+						<logger level="INFO" doc:name="Eligible Orders Ready For Salesforce Synchronization" doc:id="686ff921-3377-45f1-8660-16ea23bb9f17" message="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;    appName: app.name,&#10;    flowName: flow.name,&#10;    eligibleOrdersCount: sizeOf(payload.eligibleOrders default []),&#10;    correlationId: vars.correlationId,&#10;    timestamp: now()&#10;}]" />
+						<flow-ref doc:name="generate-salesforce-access-token-sub-flow" doc:id="33bf5c92-66c1-435e-a36b-4d19abb4c9cc" name="generate-salesforce-access-token-sub-flow"/>
+					</otherwise>
+
+</choice>
+			</when>
+
+			<otherwise>
+
+				<logger
+					level="INFO"
+					doc:name="No Pending Orders Found"
+					doc:id="8b3de5b1-1bc8-4405-9797-d01b9a7d86aa"
+					message='#[%dw 2.0
+output application/json
+---
+{
+    appName: app.name,
+    flowName: flow.name,
+    message: "No pending orders available for synchronization",
+    correlationId: vars.correlationId,
+    timestamp: now()
+}]' />
+
+			</otherwise>
+
+		</choice>
+
 	</flow>
+	<sub-flow name="generate-salesforce-access-token-sub-flow" doc:id="0c4c48b5-f1d8-4681-968b-34c149056948" >
+		<logger level="INFO" doc:name="Generating Salesforce Access Token" doc:id="f66670a5-98f3-4028-8493-abecee9f1927" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;    appName: app.name,&#10;    flowName: flow.name,&#10;    message: "Generating Salesforce access token",&#10;    correlationId: vars.correlationId,&#10;    timestamp: now()&#10;}]'/>
+		<ee:transform doc:name="Transform Message" doc:id="6b491471-97ec-404d-bc54-39ea8ef16f6f" >
+			<ee:message >
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/x-www-form-urlencoded
+---
+{
+    grant_type: "password",
+    client_id: p("salesforce.auth.clientId"),
+    client_secret: p("salesforce.auth.clientSecret"),
+    username: p("salesforce.auth.username"),
+    password: p("salesforce.auth.password")
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+
+<http:request
+    doc:name="Requesting Salesforce Access Token"
+    doc:id="217af419-723e-47bc-9a88-701f31d34259"
+    config-ref="salesforce-auth-http-request-configuration"
+    method="POST"
+    path="${salesforce.auth.tokenPath}"
+    sendBodyMode="ALWAYS"
+    requestStreamingMode="NEVER">
+
+    <http:headers><![CDATA[#[{
+        "Content-Type": "application/x-www-form-urlencoded"
+    }]]]></http:headers>
+
+</http:request>
+
+		<set-variable value="#[payload.access_token]" doc:name="var: accessToken" doc:id="f496b781-49ee-4b80-8e82-c94ebb4a4c0c" variableName="accessToken"/>
+		<set-variable value="#[payload.instance_url]" doc:name="var: salesforceInstanceUrl" doc:id="a30ff1c9-7358-44bb-aa80-63e5a5e67808" variableName="salesforceInstanceUrl"/>
+		<logger level="INFO" doc:name="Salesforce Access Token Generated Successfully" doc:id="a94fa058-4ad2-40be-af1c-20cdb4c3a002" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;    appName: app.name,&#10;    flowName: flow.name,&#10;    message: "Salesforce access token generated successfully",&#10;    correlationId: vars.correlationId,&#10;    timestamp: now()&#10;}]'/>
+		<logger level="INFO" doc:name="Logging Salesforce Token Details" doc:id="7790b7c5-83ae-4c47-8adb-3d14216d0a86" message="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;    accessTokenExists: vars.accessToken != null,&#10;    instanceUrl: vars.salesforceInstanceUrl,&#10;    correlationId: vars.correlationId,&#10;    timestamp: now()&#10;}]"/>
+	</sub-flow>
 </mule>
