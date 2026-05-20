@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+<mule xmlns:sdc="http://www.mulesoft.org/schema/mule/sdc"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
 	xmlns:http="http://www.mulesoft.org/schema/mule/http"
-	xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
-http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/sdc http://www.mulesoft.org/schema/mule/sdc/current/mule-sdc.xsd">
 
 	<flow name="sync-salesforce-orders-flow"
 		doc:id="88f1982f-380c-407d-8733-7255613eac02">
@@ -199,10 +201,181 @@ output application/json
         </foreach>
 
     </when>
-					<otherwise >
-						<logger level="INFO" doc:name="Eligible Orders Ready For Salesforce Synchronization" doc:id="686ff921-3377-45f1-8660-16ea23bb9f17" message="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;    appName: app.name,&#10;    flowName: flow.name,&#10;    eligibleOrdersCount: sizeOf(payload.eligibleOrders default []),&#10;    correlationId: vars.correlationId,&#10;    timestamp: now()&#10;}]" />
-						<flow-ref doc:name="generate-salesforce-access-token-sub-flow" doc:id="33bf5c92-66c1-435e-a36b-4d19abb4c9cc" name="generate-salesforce-access-token-sub-flow"/>
-					</otherwise>
+					<!-- <otherwise >
+						<logger level="INFO" doc:name="Eligible Orders Ready For Salesforce Synchronization" doc:id="686ff921-3377-45f1-8660-16ea23bb9f17" message="#[%dw 2.0&#10;output application/json&#10;-&#45;&#45;&#10;{&#10;    appName: app.name,&#10;    flowName: flow.name,&#10;    eligibleOrdersCount: sizeOf(payload.eligibleOrders default []),&#10;    correlationId: vars.correlationId,&#10;    timestamp: now()&#10;}]" />
+						<salesforce:create-job-bulk-api-v2 doc:name="Creating Salesforce Bulk Job" doc:id="486d5d37-0a6a-409d-bc00-a8bbd974ebb5" config-ref="salesforce-configuration" objectType="DTWorld_Order__c" operation="upsert" externalIdFieldName="Order_Id__c"/>
+						<set-variable value="#[payload.id]" doc:name="var: jobId" doc:id="2624ba9e-4985-4500-a314-dfa36282102a" variableName="jobId"/>
+						<set-variable value="#[payload]" doc:name="var: jobInfo" doc:id="4eb715ef-8251-411d-b69a-6e5bd9ec6caa" variableName="jobInfo"/>
+						<ee:transform doc:name="Preparing Salesforce Bulk Upload Payload" doc:id="2679da65-f6cb-45ce-b27a-680306b3ab87" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv header=true
+
+-&#45;&#45;
+(payload.eligibleOrders default []) map (order) -> {
+    Order_Id__c: order.orderId,
+    Customer_Name__c: order.customerName,
+    Customer_Email__c: order.customerEmail,
+    Product_Name__c: order.productName,
+    Quantity__c: order.quantity,
+    Amount__c: order.amount,
+    Status__c: order.status,
+    Order_Date__c: order.orderDate
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<salesforce:create-batch-stream doc:name="Uploading Orders To Salesforce Bulk Job" doc:id="97a5eec2-97bd-4468-ba64-14d1b5885d2c" config-ref="salesforce-configuration" jobInfoBatchStream="#[vars.jobInfo]"/>
+						<logger level="INFO" doc:name="Salesforce Bulk Upload Submitted Successfully" doc:id="a6a53238-7bff-497c-a23d-a7ce99b18b1e" message='#[%dw 2.0&#10;output application/json&#10;-&#45;&#45;&#10;{&#10;    appName: app.name,&#10;    flowName: flow.name,&#10;    jobId: vars.jobId,&#10;    correlationId: vars.correlationId,&#10;    message: "Salesforce bulk upload submitted successfully",&#10;    timestamp: now()&#10;}]'/>
+						
+						
+						<until-successful maxRetries="10" doc:name="Polling Salesforce Bulk Job Completion Status" doc:id="f8c99070-b405-4cef-82fb-8330ab0ce6dd" millisBetweenRetries="30000">
+							<salesforce:get-job-state-bulk-api-v2 doc:name="Fetching Salesforce Bulk Job Status" doc:id="2798e1c3-fc10-44e3-b756-e702282805bc" config-ref="salesforce-configuration" id="#[vars.jobId]" />
+							<choice doc:name="Bulk Job Completed?" doc:id="31870942-ec10-4088-8975-0f458bd702b9" >
+								<when expression='#[payload.state == "JobComplete"]' >
+								<salesforce:close-job doc:name="Closing Salesforce Bulk Job" doc:id="31e46b6d-a0db-4f5e-a025-2fa24d8cbbcd" config-ref="salesforce-configuration" jobId="#[vars.jobId]"/>
+									<logger level="INFO" doc:name="Salesforce Bulk Synchronization Completed Successfully" doc:id="43b7ae92-47e3-4c9f-b264-8bcbe328cc3b" message='#[%dw 2.0&#10;output application/json&#10;-&#45;&#45;&#10;{&#10;    appName: app.name,&#10;    flowName: flow.name,&#10;    jobId: vars.jobId,&#10;    bulkJobState: payload.state,&#10;    correlationId: vars.correlationId,&#10;    message: "Salesforce bulk synchronization completed successfully",&#10;    timestamp: now()&#10;}]' />
+									</when>
+								<otherwise >
+									<logger level="WARN" doc:name="Salesforce Bulk Job Still Processing" doc:id="856f49aa-e2db-4580-b0b4-005ff054bc79" message='#[%dw 2.0&#10;output application/json&#10;-&#45;&#45;&#10;{&#10;    appName: app.name,&#10;    flowName: flow.name,&#10;    jobId: vars.jobId,&#10;    bulkJobState: payload.state,&#10;    message: "Salesforce bulk job still processing",&#10;    correlationId: vars.correlationId,&#10;    timestamp: now()&#10;}]' />
+									<raise-error doc:name="Retrying Salesforce Bulk Job Status Check" doc:id="35215d93-4e6b-45c3-8af2-d448549998de" type="RETRY:JOB_NOT_COMPLETED"/>
+								</otherwise>
+							</choice>
+						</until-successful>
+						
+					</otherwise> -->
+
+</choice>
+
+<choice
+    doc:name="Eligible Orders Available?"
+    doc:id="ab4c6ae5-15af-4a1b-8341-9f5ba16ba3da">
+
+    <when expression="#[sizeOf(payload.eligibleOrders default []) > 0]">
+
+        <logger
+            level="INFO"
+            doc:name="Eligible Orders Ready For Salesforce Synchronization"
+            doc:id="5b53e7a5-3f3d-4a85-8917-e9526ac95b56"
+            message='#[%dw 2.0
+output application/json
+---
+{
+    appName: app.name,
+    flowName: flow.name,
+    eligibleOrdersCount: sizeOf(payload.eligibleOrders default []),
+    correlationId: vars.correlationId,
+    timestamp: now()
+}]' />
+
+		<set-variable
+    		value="#[payload.eligibleOrders]"
+    		doc:name="var: eligibleOrders"
+    		variableName="eligibleOrders"/>
+    		
+    	<ee:transform
+            doc:name="Preparing Salesforce Bulk Upload Payload"
+            doc:id="c5979ad9-91b1-4f6e-89a5-026d1718c2fe">
+
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/csv header=true
+---
+(vars.eligibleOrders default []) map (order) -> {
+    Order_Id__c: order.orderId,
+    Customer_Name__c: order.customerName,
+    Customer_Email__c: order.customerEmail,
+    Product_Name__c: order.productName,
+    Quantity__c: order.quantity,
+    Amount__c: order.amount,
+    Status__c: order.status,
+    Order_Date__c: order.orderDate
+}]]></ee:set-payload>
+            </ee:message>
+
+        </ee:transform>
+
+        <salesforce:create-job-bulk-api-v2
+            doc:name="Creating Salesforce Bulk Job"
+            doc:id="dc6100eb-aa90-430f-a292-9459966663ce"
+            config-ref="salesforce-configuration"
+            objectType="DTWorld_Order__c"
+            operation="upsert"
+            externalIdFieldName="Order_Id__c"/>
+
+        <set-variable
+            value="#[payload.id]"
+            doc:name="var: jobId"
+            doc:id="bb19011f-fac5-4bd2-b2fb-4929c4de828e"
+            variableName="jobId"/>
+						<until-successful maxRetries="10" doc:name="Polling Salesforce Bulk Job Status" doc:id="edb55c5b-74a1-44de-a50d-3f264f67f95e" millisBetweenRetries="30000">
+							<salesforce:get-job-state-bulk-api-v2 doc:name="Fetching Salesforce Bulk Job Status" doc:id="103853d7-4bb0-4b0e-a706-d4956b4a528a" config-ref="salesforce-configuration" id="#[vars.jobId]"/>
+							<choice doc:name="Bulk Job Completed?" doc:id="2c99f200-fb57-4556-9f1d-fc1c874dfd3f" >
+								<when expression='#[payload.state == "JobComplete"]'>
+									<logger level="INFO" doc:name="Salesforce Bulk Synchronization Completed Successfully" doc:id="a44ef0b0-a575-4159-8732-299a5855ddfb" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	appName: app.name,&#10;    flowName: "sync-salesforce-orders-flow",&#10;    jobId: vars.jobId,&#10;    state: payload.state,&#10;    message: "Salesforce bulk synchronization completed successfully",&#10;    correlationId: correlationId,&#10;    timestamp: now()&#10;}]'/>
+									
+									<ee:transform doc:name="Preparing Successfully Synchronized Orders Status Payload" doc:id="07bedad6-22a2-4623-98e8-b564f9472a61" >
+										<ee:message >
+											<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+    orderIds: vars.eligibleOrders map $.orderId,
+    syncStatus: "COMPLETED",
+    salesforceJobId: vars.jobId,
+    synchronizedAt: now()
+}]]></ee:set-payload>
+										</ee:message>
+									</ee:transform>
+									<http:request doc:name="Updating Successfully Synchronized Orders Status" doc:id="4dddaf40-ee40-41c4-8114-9c8cf0799996" method="PATCH" config-ref="db-sys-api-http-request-configuration" path="api/orders/status"/>
+									
+								</when>
+								<when expression='#[payload.state == "Failed"]'>
+									<logger level="ERROR" doc:name="Salesforce Bulk Synchronization Failed" doc:id="97cb804e-148a-486f-88f4-e281d7fb9fff" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	appName: app.name,&#10;    flowName: "sync-salesforce-orders-flow",&#10;    jobId: vars.jobId,&#10;    state: payload.state,&#10;    message: "Salesforce bulk synchronization failed",&#10;    correlationId: correlationId,&#10;    timestamp: now()&#10;}]'/>
+									<salesforce:retrieve-job-failed-results-bulk-v2 doc:name="Fetching Failed Salesforce Records" doc:id="4458d342-5495-41bc-b0a9-70cc58e97849" config-ref="salesforce-configuration" id="#[vars.jobId]"/>
+									<ee:transform doc:name="Preparing Failed Orders Status Payload" doc:id="c339fda6-2c8a-476c-a46f-83568bbb3f77" >
+										<ee:message >
+											<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+    failedOrders: write(payload, "application/csv"),
+    syncStatus: "FAILED",
+    salesforceJobId: vars.jobId,
+    failedAt: now()
+}]]></ee:set-payload>
+										</ee:message>
+									</ee:transform>
+									<http:request doc:name="Updating Failed Orders Status" doc:id="4d3c6503-cc59-4f37-b6cf-53127cbd3a5c" config-ref="db-sys-api-http-request-configuration" method="PATCH" path="api/orders/status"/>
+								
+								</when>
+								<otherwise >
+									<logger level="WARN" doc:name="Salesforce Bulk Job Still Processing" doc:id="28526de2-d5d7-406d-be48-267031100092" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	appName: app.name,&#10;    flowName: "sync-salesforce-orders-flow",&#10;    jobId: vars.jobId,&#10;    state: payload.state,&#10;    message: "Salesforce bulk job still processing",&#10;    correlationId: correlationId,&#10;    timestamp: now()&#10;}]'/>
+									<raise-error doc:name="Retrying Salesforce Bulk Job Status Check" doc:id="3b7a9420-b909-4d69-88f9-df214959d867" type="RETRY:JOB_NOT_COMPLETED" description="Salesforce bulk job processing is not completed yet"/>
+								</otherwise>
+							</choice>
+						</until-successful>
+						
+						
+    </when>
+
+    <otherwise>
+
+        <logger
+            level="INFO"
+            doc:name="No Eligible Orders Found For Salesforce Synchronization"
+            doc:id="9b76ca9e-8bd9-46e6-8fe5-29478bc41ac3"
+            message='#[%dw 2.0
+output application/json
+---
+{
+    appName: app.name,
+    flowName: flow.name,
+    message: "No eligible orders available for Salesforce synchronization",
+    correlationId: vars.correlationId,
+    timestamp: now()
+}]'/>
+
+    </otherwise>
 
 </choice>
 			</when>
@@ -229,41 +402,4 @@ output application/json
 		</choice>
 
 	</flow>
-	<sub-flow name="generate-salesforce-access-token-sub-flow" doc:id="0c4c48b5-f1d8-4681-968b-34c149056948" >
-		<logger level="INFO" doc:name="Generating Salesforce Access Token" doc:id="f66670a5-98f3-4028-8493-abecee9f1927" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;    appName: app.name,&#10;    flowName: flow.name,&#10;    message: "Generating Salesforce access token",&#10;    correlationId: vars.correlationId,&#10;    timestamp: now()&#10;}]'/>
-		<ee:transform doc:name="Transform Message" doc:id="6b491471-97ec-404d-bc54-39ea8ef16f6f" >
-			<ee:message >
-				<ee:set-payload><![CDATA[%dw 2.0
-output application/x-www-form-urlencoded
----
-{
-    grant_type: "password",
-    client_id: p("salesforce.auth.clientId"),
-    client_secret: p("salesforce.auth.clientSecret"),
-    username: p("salesforce.auth.username"),
-    password: p("salesforce.auth.password")
-}]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
-
-<http:request
-    doc:name="Requesting Salesforce Access Token"
-    doc:id="217af419-723e-47bc-9a88-701f31d34259"
-    config-ref="salesforce-auth-http-request-configuration"
-    method="POST"
-    path="${salesforce.auth.tokenPath}"
-    sendBodyMode="ALWAYS"
-    requestStreamingMode="NEVER">
-
-    <http:headers><![CDATA[#[{
-        "Content-Type": "application/x-www-form-urlencoded"
-    }]]]></http:headers>
-
-</http:request>
-
-		<set-variable value="#[payload.access_token]" doc:name="var: accessToken" doc:id="f496b781-49ee-4b80-8e82-c94ebb4a4c0c" variableName="accessToken"/>
-		<set-variable value="#[payload.instance_url]" doc:name="var: salesforceInstanceUrl" doc:id="a30ff1c9-7358-44bb-aa80-63e5a5e67808" variableName="salesforceInstanceUrl"/>
-		<logger level="INFO" doc:name="Salesforce Access Token Generated Successfully" doc:id="a94fa058-4ad2-40be-af1c-20cdb4c3a002" message='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;    appName: app.name,&#10;    flowName: flow.name,&#10;    message: "Salesforce access token generated successfully",&#10;    correlationId: vars.correlationId,&#10;    timestamp: now()&#10;}]'/>
-		<logger level="INFO" doc:name="Logging Salesforce Token Details" doc:id="7790b7c5-83ae-4c47-8adb-3d14216d0a86" message="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;    accessTokenExists: vars.accessToken != null,&#10;    instanceUrl: vars.salesforceInstanceUrl,&#10;    correlationId: vars.correlationId,&#10;    timestamp: now()&#10;}]"/>
-	</sub-flow>
 </mule>

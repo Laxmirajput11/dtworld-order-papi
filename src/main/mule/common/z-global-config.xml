@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp"
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp"
 	xmlns:http="http://www.mulesoft.org/schema/mule/http"
 	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
 	xmlns="http://www.mulesoft.org/schema/mule/core"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xsi:schemaLocation="
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
 		http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd 
 		http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
     
@@ -20,7 +20,8 @@
 	http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 	
 	http://www.mulesoft.org/schema/mule/sftp
-	http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd">
+	http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
 
 	<global-property
 		name="mule.env"
@@ -62,14 +63,8 @@
 			password="${sftp.password}"
 			workingDir="/" />
 	</sftp:config>
-	
-	<http:request-config
-    	name="salesforce-auth-http-request-configuration"
-    	doc:name="salesforce-auth-http-request-configuration">
-    	<http:request-connection
-       		protocol="HTTPS"
-        	host="${salesforce.auth.host}"
-        	port="443"/>
-	</http:request-config>
+	<salesforce:sfdc-config name="salesforce-configuration" doc:name="Salesforce Config" doc:id="562b73be-3f4e-4462-95c8-93364f2b558f" >
+		<salesforce:oauth-user-pass-connection consumerKey="3MVG97L7PWbPq6UwpCtTo2lTZ1ZaU1wcpZ3fwRQiYwY1a5s9.irnZNMf_ZEko6eB8fSOzBZxMLzAKEWfWRHtP" consumerSecret="895E63A2138F394F1BA4832C7D844B5097707CE36459D8B6D439023CCB5DD4EA" username="laxmi.rajput.526b4c653e6d@agentforce.com" password="#Mule@1234" securityToken="N376BYKmClHWZyguBt1YcYStQ" />
+	</salesforce:sfdc-config>
 
 </mule>
